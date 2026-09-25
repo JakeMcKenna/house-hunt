@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="House Hunt">
+<title>McKenna House Hunt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231F5E5B'/%3E%3Cpath d='M8 16l8-7 8 7v8h-5v-5h-6v5H8z' fill='white'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<div class="wrap signin" id="signin" hidden>
+  <h1>McKenna House Hunt</h1>
+  <form id="signin-form" style="display:flex;flex-direction:column;gap:10px">
+    <label for="pw" class="sub" id="signin-msg">Enter the house hunt password.</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit" style="padding:10px 14px;font-size:.95rem">Open tracker</button>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="topbar">
+    <div>
+      <h1>McKenna House Hunt</h1>
+      <p class="sub">4+ bed, up to £600,000, within 3 miles of Hanham. Claude updates this at 7:45, 12:45 and 18:45.</p>
+    </div>
+    <div class="who"><button class="btn" id="btn-signout" type="button">Lock</button></div>
+  </header>
+
+  <section class="stats" aria-label="Summary">
+    <button class="stat" id="s-review" data-go="props" data-filter="To review"><div class="n" id="n-review">–</div><div class="l">To review</div></button>
+    <button class="stat" id="s-call" data-go="call"><div class="n" id="n-call">–</div><div class="l">To call</div></button>
+    <button class="stat" id="s-next" data-go="views"><div class="next" id="n-next">–</div><div class="l">Next viewing</div></button>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-call" data-tab="call" aria-selected="false">Call list</button>
+    <button class="tab" role="tab" id="t-props" data-tab="props" aria-selected="true">Properties</button>
+    <button class="tab" role="tab" id="t-views" data-tab="views" aria-selected="false">Viewings</button>
+  </nav>
+
+  <section id="p-call" hidden>
+    <p class="sub" style="margin:0 0 10px">Houses marked <b>Want to view</b>. Ring the agent, then set the status to <b>Viewing booked</b> or <b>Called</b>.</p>
+    <div class="list" id="call-list"></div>
+  </section>
+
+  <section id="p-props">
+    <div class="tools">
+      <input id="q" type="search" placeholder="Search street, area, agent…" aria-label="Search properties">
+      <select id="sort" aria-label="Sort">
+        <option value="status">By status</option>
+        <option value="newest">Newest first</option>
+        <option value="price-asc">Price: low to high</option>
+        <option value="price-desc">Price: high to low</option>
+      </select>
+    </div>
+    <div class="chips" id="chips" style="margin-bottom:12px"></div>
+    <div class="list" id="prop-list"></div>
+    <details style="margin-top:12px"><summary>Add a property by hand</summary>
+      <form class="add" id="add-prop">
+        <label>Address<input id="ap-addr" required placeholder="97 Hengrove Lane, BS14"></label>
+        <label>Price (£)<input id="ap-price" inputmode="numeric" placeholder="450000"></label>
+        <label>Beds<input id="ap-beds" inputmode="numeric" placeholder="4"></label>
+        <label>Type<input id="ap-type" placeholder="semi-detached house"></label>
+        <label>Agent<input id="ap-agent" placeholder="Agent, branch"></label>
+        <label>Agent phone<input id="ap-phone" placeholder="0117 …"></label>
+        <label>Rightmove link<input id="ap-link" placeholder="https://www.rightmove.co.uk/properties/…"></label>
+        <label>&nbsp;<button class="btn primary" type="submit">Add property</button></label>
+      </form>
+    </details>
+  </section>
+
+  <section id="p-views" hidden>
+    <div class="list" id="view-list"></div>
+    <details style="margin-top:12px"><summary>Add a viewing by hand</summary>
+      <form class="add" id="add-view">
+        <label>Date<input id="av-date" type="date" required></label>
+        <label>Time<input id="av-time" type="time" required></label>
+        <label>Address<input id="av-addr" required></label>
+        <label>Agent<input id="av-agent"></label>
+        <label>Contact<input id="av-contact"></label>
+        <label>&nbsp;<button class="btn primary" type="submit">Add viewing</button></label>
+      </form>
+    </details>
+    <details style="margin-top:12px"><summary id="past-sum">Past and cancelled</summary><div class="list" id="past-list" style="margin-top:10px"></div></details>
+  </section>
+
+  <p class="foot" id="foot">Connecting…</p>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
