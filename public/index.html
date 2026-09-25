@@ -4,7 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1F5E5B">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="House Hunt">
 <title>McKenna House Hunt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -100,6 +104,29 @@
 
   <p class="foot" id="foot">Connecting…</p>
 </div>
+
+<dialog id="after-call" aria-labelledby="ac-title">
+  <form id="ac-form" class="ac">
+    <h2 id="ac-title">How did the call go?</h2>
+    <p class="sub" id="ac-sub"></p>
+    <fieldset class="ac-choices">
+      <legend class="sub">Did you book a viewing?</legend>
+      <label class="ac-choice"><input type="radio" name="ac-outcome" id="ac-o-booked" value="booked" required> Yes, viewing booked</label>
+      <label class="ac-choice"><input type="radio" name="ac-outcome" id="ac-o-none" value="none"> Spoke to them, no viewing</label>
+      <label class="ac-choice"><input type="radio" name="ac-outcome" id="ac-o-noanswer" value="noanswer"> Couldn't get through</label>
+    </fieldset>
+    <div class="ac-when" id="ac-when" hidden>
+      <label>Date<input type="date" id="ac-date"></label>
+      <label>Time<input type="time" id="ac-time" step="300"></label>
+    </div>
+    <label class="ac-notes">Notes<textarea id="ac-notes" rows="2" placeholder="Who you spoke to, anything they said…"></textarea></label>
+    <div class="ac-actions">
+      <button type="button" class="btn" id="ac-skip">Skip</button>
+      <button type="button" class="btn" id="ac-later">Ask me later</button>
+      <button type="submit" class="btn primary" id="ac-save">Save</button>
+    </div>
+  </form>
+</dialog>
 
 <div class="toast" id="toast" hidden></div>
 <script type="module" src="app.js"></script>

@@ -86,3 +86,19 @@ form.add label{display:flex;flex-direction:column;gap:3px;font-size:.78rem;color
 .tools{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-bottom:10px}
 @media (max-width:520px){.tools{grid-template-columns:1fr 1fr}.tools #q{grid-column:1/-1}}
 .signin{max-width:420px;margin:12vh auto 0;display:flex;flex-direction:column;gap:14px;text-align:left}
+
+a.tel{font:500 .95rem var(--mono);color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--accent)}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn.call{padding:10px 14px;font-size:.95rem;flex:1 1 auto;justify-content:center}
+dialog#after-call{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:18px;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto}
+dialog#after-call::backdrop{background:rgba(10,20,18,.55)}
+.ac{display:flex;flex-direction:column;gap:12px}
+.ac h2{margin:0}
+.ac-choices{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.ac-choices legend{padding:0;margin-bottom:4px}
+.ac-choice{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--bg)}
+.ac-choice:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.ac-choice input{width:auto;accent-color:var(--accent)}
+.ac-when{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ac-when label,.ac-notes{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
+.ac-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}

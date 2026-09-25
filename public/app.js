@@ -38,6 +38,7 @@ async function start() {
   $("signin").hidden = true; $("app").hidden = false;
   await Promise.all([loadProps(), loadViews()]);
   subscribe();
+  checkPending();
 }
 function showSignIn(msg) {
   $("app").hidden = true; $("signin").hidden = false;
@@ -80,16 +81,22 @@ async function save(table, id, patch, msg) {
 }
 
 // ---------- rendering ----------
-function setTab(t) { tab = t; for (const k of ["call", "props", "views"]) { $("p-" + k).hidden = k !== t; $("t-" + k).setAttribute("aria-selected", k === t); } try { localStorage.setItem("hh-tab", t); } catch {} }
-document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
-document.querySelectorAll(".stat").forEach((b) => (b.onclick = () => { if (b.dataset.filter) filter = b.dataset.filter; setTab(b.dataset.go); render(); }));
+// ---------- routing: one page, tabs live in the URL hash so Back works in the installed app ----------
+const ROUTES = { call: "#call", props: "#properties", views: "#viewings" };
+const tabFromHash = () => Object.keys(ROUTES).find((k) => ROUTES[k] === location.hash);
+function setTab(t) { tab = t; for (const k of Object.keys(ROUTES)) { $("p-" + k).hidden = k !== t; $("t-" + k).setAttribute("aria-selected", k === t); } try { localStorage.setItem("hh-tab", t); } catch {} }
+function go(t) { if (location.hash !== ROUTES[t]) location.hash = ROUTES[t]; else setTab(t); }
+window.addEventListener("hashchange", () => { const t = tabFromHash(); if (t) setTab(t); });
+document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => go(b.dataset.tab)));
+document.querySelectorAll(".stat").forEach((b) => (b.onclick = () => { if (b.dataset.filter) filter = b.dataset.filter; go(b.dataset.go); render(); }));
 $("q").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); render(); });
 $("sort").addEventListener("change", (e) => { sort = e.target.value; render(); });
 const BEDS = { any: () => true, "4-5": (b) => b === 4 || b === 5, "4": (b) => b === 4, "5": (b) => b === 5, "6+": (b) => b >= 6 };
 try { const b = localStorage.getItem("hh-beds"); if (b && BEDS[b]) { beds = b; $("beds").value = b; } } catch {}
 $("beds").addEventListener("change", (e) => { beds = e.target.value; try { localStorage.setItem("hh-beds", beds); } catch {} render(); });
 
-function propCard(p) {
+const telHref = (n) => "tel:" + String(n).replace(/[^\d+]/g, "");
+function propCard(p, forCall = false) {
   const st = p.status || "To review";
   const cls = st === "To review" ? "review" : st === "Want to view" ? "call" : "";
   const opts = STATUSES.map((s) => `<option ${s === st ? "selected" : ""}>${s}</option>`).join("");
@@ -100,7 +107,9 @@ function propCard(p) {
       <span>${p.alert ? `<span class="pill ${p.alert === "Reduced" ? "p-call" : "p-plain"}">${esc(p.alert)}</span> ` : ""}<span class="pill ${PILL[st] || "p-plain"}">${esc(st)}</span></span></div>
     <div><div class="addr">${esc(p.address)}</div>
       <div class="meta">${[p.beds ? p.beds + " bed" : "", p.property_type, p.agent].filter(Boolean).map(esc).join(" · ")}${seen}</div></div>
-    ${p.phone || link ? `<div class="phone">${p.phone ? `<code>${esc(p.phone)}</code><button class="btn" data-copy="${esc(p.phone)}" type="button">Copy number</button>` : ""}${link}</div>` : ""}
+    ${forCall && p.phone
+      ? `<div class="phone"><a class="btn primary call" href="${esc(telHref(p.phone))}" data-call="${esc(p.id)}">Call ${esc(p.agent.split(",")[0] || "agent")} · ${esc(p.phone)}</a>${link}</div>`
+      : p.phone || link ? `<div class="phone">${p.phone ? `<a class="tel" href="${esc(telHref(p.phone))}" data-call="${esc(p.id)}">${esc(p.phone)}</a><button class="btn" data-copy="${esc(p.phone)}" type="button">Copy</button>` : ""}${link}</div>` : ""}
     <div class="controls">
       <select aria-label="Status" id="st-${esc(p.id)}" data-f="status">${opts}</select>
       <textarea aria-label="Notes" id="nt-${esc(p.id)}" data-f="notes" placeholder="Notes (garden, parking, school catchment…)">${esc(p.notes)}</textarea>
@@ -112,7 +121,7 @@ function viewCard(v) {
   const opts = VSTAT.map((s) => `<option ${s === st ? "selected" : ""}>${s}</option>`).join("");
   const strike = st === "Cancelled" ? "strike" : "";
   return `<article class="card" data-vid="${esc(v.id)}"><div class="vt"><div class="time ${strike}">${londonTime(d)}</div><div style="display:flex;flex-direction:column;gap:6px">
-    <div class="row"><span class="addr ${strike}">${esc(v.address)}</span><span class="pill ${pc}">${esc(st)}</span></div>
+    <div class="row"><span class="addr ${strike}">${esc(v.address)}</span><span>${v.booked_via === "app" && !v.email_confirmed_at && st !== "Cancelled" ? `<span class="pill p-review" title="Booked by phone. No confirmation email from the agent yet.">No email yet</span> ` : ""}<span class="pill ${pc}">${esc(st)}</span></span></div>
     <div class="meta">${[v.agent, v.contact, v.with_whom].filter(Boolean).map(esc).join(" · ")}</div>
     ${v.notes ? `<div class="meta">${esc(v.notes)}</div>` : ""}
     <div class="row" style="justify-content:flex-start"><select aria-label="Viewing status" id="vs-${esc(v.id)}" data-vf="status" style="max-width:170px">${opts}</select>${v.calendar_event_id ? `<span class="meta">In calendar</span>` : ""}</div>
@@ -152,7 +161,7 @@ function render() {
   // Keep focus/typing intact: skip re-render of a list while the user is editing inside it
   const editing = document.activeElement?.closest?.("#prop-list, #call-list, #view-list, #past-list");
   if (!editing || editing.id !== "prop-list") $("prop-list").innerHTML = shown.length ? shown.map(propCard).join("") : `<div class="empty">Nothing here.</div>`;
-  if (!editing || editing.id !== "call-list") $("call-list").innerHTML = call.length ? call.map(propCard).join("") : `<div class="empty">No calls to make. Mark a house <b>Want to view</b> and it appears here.</div>`;
+  if (!editing || editing.id !== "call-list") $("call-list").innerHTML = call.length ? call.map((p) => propCard(p, true)).join("") : `<div class="empty">No calls to make. Mark a house <b>Want to view</b> and it appears here.</div>`;
 
   const today = londonDate(new Date());
   let html = "", last = "";
@@ -166,8 +175,65 @@ function render() {
   $("past-sum").textContent = `Past and cancelled (${past.length})`;
 }
 
+// ---------- after a call: ask how it went ----------
+const PENDING = "hh-pending-call";
+const readPending = () => { try { return JSON.parse(localStorage.getItem(PENDING) || "null"); } catch { return null; } };
+const writePending = (v) => { try { v ? localStorage.setItem(PENDING, JSON.stringify(v)) : localStorage.removeItem(PENDING); } catch {} };
+let acProp = null;
+function checkPending() {
+  const pc = readPending();
+  if (!pc || $("after-call").open || !props.length) return;
+  if (Date.now() - pc.at > 12 * 3600e3) return writePending(null);   // stale
+  if (Date.now() - pc.at < 2000) return;                              // tel: link hasn't handed over yet
+  acProp = props.find((p) => p.id === pc.id);
+  if (!acProp) return writePending(null);
+  $("ac-form").reset(); $("ac-when").hidden = true;
+  $("ac-sub").textContent = `${acProp.agent || "Agent"} · ${acProp.address}`;
+  $("after-call").showModal();
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") setTimeout(checkPending, 300); });
+window.addEventListener("focus", () => setTimeout(checkPending, 300));
+$("ac-form").addEventListener("change", (e) => {
+  if (e.target.name !== "ac-outcome") return;
+  const booked = e.target.value === "booked";
+  $("ac-when").hidden = !booked; $("ac-date").required = booked; $("ac-time").required = booked;
+  if (booked && !$("ac-date").value) $("ac-date").value = londonDate(new Date());
+});
+$("ac-skip").onclick = () => { writePending(null); $("after-call").close(); };
+$("ac-later").onclick = () => { const pc = readPending(); if (pc) writePending({ ...pc, at: Date.now() - 2500 }); $("after-call").close(); };
+$("ac-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const p = acProp; if (!p) return;
+  const outcome = new FormData(e.target).get("ac-outcome");
+  const extra = $("ac-notes").value.trim();
+  const stamp = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const addNote = (line) => [p.notes, line + (extra ? " " + extra : "")].filter(Boolean).join("\n");
+  $("ac-save").disabled = true;
+  let error;
+  if (outcome === "booked") {
+    const d = $("ac-date").value, t = $("ac-time").value;
+    const when = `${new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} ${t}`;
+    ({ error } = await sb.from("viewings").insert({
+      id: slug(`${d}-${t.replace(":", "")}-${p.id}`), property_id: p.id, starts_at: londonToIso(d, t),
+      address: p.address, agent: p.agent, contact: p.phone, status: "Confirmed",
+      booked_via: "app", email_confirmed_at: null, notes: extra ? `Booked by phone. ${extra}` : "Booked by phone.",
+    }));
+    if (!error) ({ error } = await sb.from("properties").update({ status: "Viewing booked", notes: addNote(`${stamp}: booked viewing by phone for ${when}.`) }).eq("id", p.id));
+  } else if (outcome === "none") {
+    ({ error } = await sb.from("properties").update({ status: "Called", notes: addNote(`${stamp}: called, no viewing booked.`) }).eq("id", p.id));
+  } else {
+    ({ error } = await sb.from("properties").update({ notes: addNote(`${stamp}: tried calling, couldn't get through.`) }).eq("id", p.id));
+  }
+  $("ac-save").disabled = false;
+  if (error) { toast("Couldn't save: " + error.message); return; }
+  writePending(null); $("after-call").close();
+  toast(outcome === "booked" ? "Viewing saved. Claude will watch for the agent's email." : "Saved");
+  if (outcome === "booked") go("views");
+});
+
 // ---------- events ----------
 document.addEventListener("click", async (e) => {
+  const tl = e.target.closest("[data-call]"); if (tl) { writePending({ id: tl.dataset.call, at: Date.now() }); return; }   // let the tel: link open the dialler
   const c = e.target.closest("[data-chip]"); if (c) { filter = c.dataset.chip; render(); return; }
   const cp = e.target.closest("[data-copy]");
   if (cp) {
@@ -202,5 +268,11 @@ $("add-view").addEventListener("submit", async (e) => {
   if (error) toast("Couldn't add it: " + error.message); else { e.target.reset(); toast("Viewing added"); }
 });
 
-try { const t = localStorage.getItem("hh-tab"); if (t) setTab(t); } catch {}
+{
+  let t = tabFromHash();
+  if (!t) { try { t = localStorage.getItem("hh-tab"); } catch {} }
+  t = ROUTES[t] ? t : "props";
+  history.replaceState(null, "", ROUTES[t]); setTab(t);
+}
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 start();
