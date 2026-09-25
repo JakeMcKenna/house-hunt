@@ -44,9 +44,10 @@
   </section>
 
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="t-call" data-tab="call" aria-selected="false">Call list</button>
+    <button class="tab" role="tab" id="t-call" data-tab="call" aria-selected="false">Calls</button>
     <button class="tab" role="tab" id="t-props" data-tab="props" aria-selected="true">Properties</button>
     <button class="tab" role="tab" id="t-views" data-tab="views" aria-selected="false">Viewings</button>
+    <button class="tab" role="tab" id="t-sale" data-tab="sale" aria-selected="false">Springleaze</button>
   </nav>
 
   <section id="p-call" hidden>
@@ -107,6 +108,19 @@
       </div>
     </details>
     <details style="margin-top:12px"><summary id="past-sum">Past and cancelled</summary><div class="list" id="past-list" style="margin-top:10px"></div></details>
+  </section>
+
+  <section id="p-sale" hidden>
+    <p class="sub" style="margin:0 0 10px">Buyers viewing our house. Claude adds these from Garrett Bradly's emails, along with their feedback. They're kept out of the house hunt.</p>
+    <div class="list" id="sale-list"></div>
+    <details style="margin-top:12px"><summary>Calendar feed for 37 Springleaze viewings</summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        <p class="sub" style="margin:0">A separate calendar with only the buyer viewings of our house. Subscribe to it in FamilyWall alongside the house-hunt feed.</p>
+        <input id="sale-feed-url" readonly aria-label="37 Springleaze calendar feed link" value="Loading…">
+        <div class="row" style="justify-content:flex-start"><button class="btn primary" id="sale-feed-copy" type="button">Copy link</button><a class="btn" id="sale-feed-open" href="#">Open in calendar app</a></div>
+      </div>
+    </details>
+    <details style="margin-top:12px"><summary id="sale-past-sum">Past and cancelled</summary><div class="list" id="sale-past-list" style="margin-top:10px"></div></details>
   </section>
 
   <p class="foot" id="foot">Connecting…</p>

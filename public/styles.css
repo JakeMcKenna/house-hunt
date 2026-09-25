@@ -38,7 +38,7 @@ h2{font:600 1.15rem/1.2 var(--display);margin:0}
 .stat.hot{border-color:var(--accent);background:var(--accent-soft)}
 .stat .next{font:600 .95rem/1.25 var(--body)}
 .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);overflow-x:auto}
-.tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;font:600 .95rem var(--body);color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 10px;font:600 .95rem var(--body);color:var(--muted);cursor:pointer;white-space:nowrap}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 10px;font:500 .8rem var(--body);cursor:pointer}

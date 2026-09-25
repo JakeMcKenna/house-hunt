@@ -10,7 +10,7 @@ const PILL = { "To review": "p-review", "Want to view": "p-call", "Called": "p-p
 const VSTAT = ["Confirmed", "Rescheduled", "Cancelled", "Done"];
 const TZ = "Europe/London";
 
-let props = [], views = [], filter = "Active", tab = "props", query = "", sort = "status", beds = "any";
+let props = [], views = [], sales = [], filter = "Active", tab = "props", query = "", sort = "status", beds = "any";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const gbp = (n) => (n ? "£" + Number(n).toLocaleString("en-GB") : "POA");
@@ -36,10 +36,11 @@ async function start() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return showSignIn();
   $("signin").hidden = true; $("app").hidden = false;
-  await Promise.all([loadProps(), loadViews()]);
+  await Promise.all([loadProps(), loadViews(), loadSales()]);
   subscribe();
   checkPending();
-  loadFeedLink();
+  loadFeedLink("ical_token", "feed", "");
+  loadFeedLink("sale_ical_token", "sale-feed", "feed=sale&");
 }
 function showSignIn(msg) {
   $("app").hidden = true; $("signin").hidden = false;
@@ -69,11 +70,17 @@ async function loadViews() {
   if (error) { $("foot").textContent = "Couldn't load viewings: " + error.message; return; }
   views = data; render();
 }
+async function loadSales() {
+  const { data, error } = await sb.from("sale_viewings").select("*").order("starts_at");
+  if (error) { $("foot").textContent = "Couldn't load 37 Springleaze viewings: " + error.message; return; }
+  sales = data; renderSales();
+}
 function subscribe() {
-  let tp, tv;
+  let tp, tv, ts;
   sb.channel("hh")
     .on("postgres_changes", { event: "*", schema: "public", table: "properties" }, () => { clearTimeout(tp); tp = setTimeout(loadProps, 300); })
     .on("postgres_changes", { event: "*", schema: "public", table: "viewings" }, () => { clearTimeout(tv); tv = setTimeout(loadViews, 300); })
+    .on("postgres_changes", { event: "*", schema: "public", table: "sale_viewings" }, () => { clearTimeout(ts); ts = setTimeout(loadSales, 300); })
     .subscribe((s) => { $("foot").textContent = s === "SUBSCRIBED" ? "Live. Changes save as you make them." : "Reconnecting…"; });
 }
 async function save(table, id, patch, msg) {
@@ -83,7 +90,7 @@ async function save(table, id, patch, msg) {
 
 // ---------- rendering ----------
 // ---------- routing: one page, tabs live in the URL hash so Back works in the installed app ----------
-const ROUTES = { call: "#call", props: "#properties", views: "#viewings" };
+const ROUTES = { call: "#call", props: "#properties", views: "#viewings", sale: "#springleaze" };
 const tabFromHash = () => Object.keys(ROUTES).find((k) => ROUTES[k] === location.hash);
 function setTab(t) { tab = t; for (const k of Object.keys(ROUTES)) { $("p-" + k).hidden = k !== t; $("t-" + k).setAttribute("aria-selected", k === t); } try { localStorage.setItem("hh-tab", t); } catch {} }
 function go(t) { if (location.hash !== ROUTES[t]) location.hash = ROUTES[t]; else setTab(t); }
@@ -177,17 +184,51 @@ function render() {
 }
 
 // ---------- calendar feed link ----------
-async function loadFeedLink() {
-  const { data, error } = await sb.from("app_settings").select("value").eq("key", "ical_token").maybeSingle();
-  if (error || !data) { $("feed-url").value = "Couldn't load the calendar link."; return; }
-  const url = `${SUPABASE_URL}/functions/v1/viewings-ics?token=${data.value}`;
-  $("feed-url").value = url;
-  $("feed-open").href = url.replace(/^https:/, "webcal:");
+async function loadFeedLink(key, prefix, query) {
+  const { data, error } = await sb.from("app_settings").select("value").eq("key", key).maybeSingle();
+  if (error || !data) { $(prefix + "-url").value = "Couldn't load the calendar link."; return; }
+  const url = `${SUPABASE_URL}/functions/v1/viewings-ics?${query}token=${data.value}`;
+  $(prefix + "-url").value = url;
+  $(prefix + "-open").href = url.replace(/^https:/, "webcal:");
 }
-$("feed-copy").onclick = async () => {
-  try { await navigator.clipboard.writeText($("feed-url").value); toast("Calendar link copied"); }
-  catch { $("feed-url").select(); toast("Link selected. Copy it from the box."); }
-};
+for (const prefix of ["feed", "sale-feed"]) {
+  $(prefix + "-copy").onclick = async () => {
+    try { await navigator.clipboard.writeText($(prefix + "-url").value); toast("Calendar link copied"); }
+    catch { $(prefix + "-url").select(); toast("Link selected. Copy it from the box."); }
+  };
+}
+
+// ---------- 37 Springleaze (our sale) ----------
+function saleCard(v) {
+  const st = v.status || "Confirmed", d = new Date(v.starts_at);
+  const pc = st === "Cancelled" ? "p-bad" : st === "Done" ? "p-plain" : st === "Rescheduled" ? "p-review" : "p-good";
+  const opts = VSTAT.map((s) => `<option ${s === st ? "selected" : ""}>${s}</option>`).join("");
+  const strike = st === "Cancelled" ? "strike" : "";
+  return `<article class="card" data-sid="${esc(v.id)}"><div class="vt"><div class="time ${strike}">${londonTime(d)}</div><div style="display:flex;flex-direction:column;gap:6px">
+    <div class="row"><span class="addr ${strike}">${esc(v.viewer || "Buyer")}</span><span class="pill ${pc}">${esc(st)}</span></div>
+    <div class="meta">${[v.agent, v.agent_contact].filter(Boolean).map(esc).join(" · ")}${v.notes ? " · " + esc(v.notes) : ""}</div>
+    <div class="controls">
+      <select aria-label="Viewing status" id="ss-${esc(v.id)}" data-sf="status">${opts}</select>
+      <textarea aria-label="Feedback" id="sf-${esc(v.id)}" data-sf="feedback" placeholder="Feedback from the agent">${esc(v.feedback)}</textarea>
+    </div>
+  </div></div></article>`;
+}
+function renderSales() {
+  const cutoff = Date.now() - 3600e3;
+  const up = sales.filter((v) => !["Cancelled", "Done"].includes(v.status) && new Date(v.starts_at).getTime() >= cutoff);
+  const past = sales.filter((v) => !up.includes(v)).reverse();
+  const today = londonDate(new Date());
+  let html = "", last = "";
+  for (const v of up) {
+    const d = new Date(v.starts_at), key = londonDate(d);
+    if (key !== last) { html += `<div class="day">${key === today ? "Today · " : ""}${dayLabel(d)}</div>`; last = key; }
+    html += saleCard(v);
+  }
+  const editing = document.activeElement?.closest?.("#sale-list, #sale-past-list");
+  if (!editing || editing.id !== "sale-list") $("sale-list").innerHTML = html || `<div class="empty">No buyer viewings booked.</div>`;
+  if (!editing || editing.id !== "sale-past-list") $("sale-past-list").innerHTML = past.map(saleCard).join("") || `<div class="empty">None yet.</div>`;
+  $("sale-past-sum").textContent = `Past and cancelled (${past.length})`;
+}
 
 // ---------- after a call: ask how it went ----------
 const PENDING = "hh-pending-call";
@@ -259,6 +300,7 @@ document.addEventListener("change", (e) => {
   const card = e.target.closest("[data-id]"), vcard = e.target.closest("[data-vid]");
   if (card && e.target.dataset.f) { const f = e.target.dataset.f; save("properties", card.dataset.id, { [f]: e.target.value }, f === "status" ? "Status saved" : "Notes saved"); }
   else if (vcard && e.target.dataset.vf) save("viewings", vcard.dataset.vid, { status: e.target.value }, "Viewing updated");
+  else { const scard = e.target.closest("[data-sid]"); if (scard && e.target.dataset.sf) save("sale_viewings", scard.dataset.sid, { [e.target.dataset.sf]: e.target.value }, e.target.dataset.sf === "status" ? "Viewing updated" : "Feedback saved"); }
 });
 $("add-prop").addEventListener("submit", async (e) => {
   e.preventDefault();

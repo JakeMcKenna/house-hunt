@@ -28,6 +28,7 @@ vercel.json     headers for sw.js and the manifest
 | `properties` | one row per house. `status` is one of: To review, Want to view, Called, Viewing booked, Viewed, Offer made, Not for us, Sold / withdrawn |
 | `viewings` | houses we're viewing. `starts_at` is a timestamptz; Claude writes it as `'2026-09-30 17:00 Europe/London'`. `booked_via` is `email` (from an agent's confirmation email) or `app` (logged after a phone call). `email_confirmed_at` is null on an app-booked viewing until Claude finds the agent's confirmation email, and those are the ones to chase |
 | `allowed_users` | accounts that may use the app (just the shared login, `house-hunt@example.com`). Only readable by the service role |
+| `sale_viewings` | buyers viewing our own house (37 Springleaze), from Garrett Bradly's emails: `viewer`, `agent_contact`, `status`, `feedback`, `notes`. Kept separate from the house hunt |
 | `sync_state` | Claude's bookkeeping (last run time, Gmail thread IDs already processed). Hidden from the app |
 
 Row level security: signed-in users can read and write `properties` and `viewings` only if their email is in `allowed_users`, so a stray sign-up can't see anything. Claude connects as the postgres role through the connector, which bypasses row level security.
@@ -42,7 +43,18 @@ Supabase project `house-hunt` (ref `fkpcolgfgkhmyfuauirf`, London region) alread
 
 The app asks only for the password. It signs in as `house-hunt@example.com` behind the scenes, and the session is remembered on each device until someone clicks **Lock**.
 
-## Calendar feed
+## Calendar feeds
+
+There are two separate feeds, each with its own secret token:
+
+| feed | URL | token key |
+|---|---|---|
+| House viewings (houses we're viewing) | `/functions/v1/viewings-ics?token=…` | `ical_token` |
+| 37 Springleaze viewings (buyers viewing ours) | `/functions/v1/viewings-ics?feed=sale&token=…` | `sale_ical_token` |
+
+The Springleaze feed titles events `Buyer viewing: <name>` at 37 Springleaze and includes the agent, notes and any feedback. Both links are in the app: on the Viewings tab and the Springleaze tab.
+
+### House viewings feed
 
 The Viewings tab has a **Calendar feed** section with the link, a copy button and a webcal:// link. The feed:
 - includes every viewing except cancelled ones, lasting one hour each, with the address as the location
@@ -52,7 +64,7 @@ The Viewings tab has a **Calendar feed** section with the link, a copy button an
 The link contains a secret token (`app_settings.ical_token`) because calendar apps can't sign in. To revoke the link and make a new one:
 
 ```sql
-update public.app_settings set value = replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '') where key = 'ical_token';
+update public.app_settings set value = replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '') where key = 'ical_token';  -- or 'sale_ical_token'
 ```
 
 Source is in `supabase/functions/viewings-ics/index.ts`. It's deployed with JWT verification off (the token check replaces it).
