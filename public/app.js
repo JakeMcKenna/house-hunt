@@ -10,7 +10,7 @@ const PILL = { "To review": "p-review", "Want to view": "p-call", "Called": "p-p
 const VSTAT = ["Confirmed", "Rescheduled", "Cancelled", "Done"];
 const TZ = "Europe/London";
 
-let props = [], views = [], filter = "Active", tab = "props", query = "", sort = "status";
+let props = [], views = [], filter = "Active", tab = "props", query = "", sort = "status", beds = "any";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const gbp = (n) => (n ? "£" + Number(n).toLocaleString("en-GB") : "POA");
@@ -85,6 +85,9 @@ document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => setTab(b.dat
 document.querySelectorAll(".stat").forEach((b) => (b.onclick = () => { if (b.dataset.filter) filter = b.dataset.filter; setTab(b.dataset.go); render(); }));
 $("q").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); render(); });
 $("sort").addEventListener("change", (e) => { sort = e.target.value; render(); });
+const BEDS = { any: () => true, "4-5": (b) => b === 4 || b === 5, "4": (b) => b === 4, "5": (b) => b === 5, "6+": (b) => b >= 6 };
+try { const b = localStorage.getItem("hh-beds"); if (b && BEDS[b]) { beds = b; $("beds").value = b; } } catch {}
+$("beds").addEventListener("change", (e) => { beds = e.target.value; try { localStorage.setItem("hh-beds", beds); } catch {} render(); });
 
 function propCard(p) {
   const st = p.status || "To review";
@@ -129,11 +132,12 @@ function render() {
   const nx = upcoming[0];
   $("n-next").textContent = nx ? `${shortDay(new Date(nx.starts_at))} ${londonTime(new Date(nx.starts_at))} · ${nx.address.split(",")[0]}` : "None booked";
 
-  const counts = { Active: props.filter(active).length, All: props.length };
-  STATUSES.forEach((s) => (counts[s] = props.filter((p) => p.status === s).length));
+  const pool = props.filter((p) => BEDS[beds](p.beds));
+  const counts = { Active: pool.filter(active).length, All: pool.length };
+  STATUSES.forEach((s) => (counts[s] = pool.filter((p) => p.status === s).length));
   $("chips").innerHTML = ["Active", ...STATUSES.filter((s) => counts[s]), "All"].map((s) => `<button class="chip" type="button" data-chip="${esc(s)}" aria-pressed="${s === filter}">${esc(s)} ${counts[s]}</button>`).join("");
 
-  let shown = props.filter((p) => (filter === "All" ? true : filter === "Active" ? active(p) : p.status === filter));
+  let shown = pool.filter((p) => (filter === "All" ? true : filter === "Active" ? active(p) : p.status === filter));
   if (query) shown = shown.filter((p) => [p.address, p.agent, p.property_type, p.notes].join(" ").toLowerCase().includes(query));
   const order = (s) => ({ "To review": 0, "Want to view": 1, "Viewing booked": 2, "Called": 3, "Viewed": 4, "Offer made": 5 })[s] ?? 9;
   const byNew = (a, b) => (b.first_seen || "").localeCompare(a.first_seen || "") || (b.created_at || "").localeCompare(a.created_at || "");

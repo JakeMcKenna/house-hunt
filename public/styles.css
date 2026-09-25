@@ -83,5 +83,6 @@ form.add label{display:flex;flex-direction:column;gap:3px;font-size:.78rem;color
 
 .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .who{font-size:.8rem;color:var(--muted);display:flex;gap:8px;align-items:center}
-.tools{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px}
+.tools{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-bottom:10px}
+@media (max-width:520px){.tools{grid-template-columns:1fr 1fr}.tools #q{grid-column:1/-1}}
 .signin{max-width:420px;margin:12vh auto 0;display:flex;flex-direction:column;gap:14px;text-align:left}
