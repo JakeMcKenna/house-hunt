@@ -39,6 +39,7 @@ async function start() {
   await Promise.all([loadProps(), loadViews()]);
   subscribe();
   checkPending();
+  loadFeedLink();
 }
 function showSignIn(msg) {
   $("app").hidden = true; $("signin").hidden = false;
@@ -124,7 +125,7 @@ function viewCard(v) {
     <div class="row"><span class="addr ${strike}">${esc(v.address)}</span><span>${v.booked_via === "app" && !v.email_confirmed_at && st !== "Cancelled" ? `<span class="pill p-review" title="Booked by phone. No confirmation email from the agent yet.">No email yet</span> ` : ""}<span class="pill ${pc}">${esc(st)}</span></span></div>
     <div class="meta">${[v.agent, v.contact, v.with_whom].filter(Boolean).map(esc).join(" · ")}</div>
     ${v.notes ? `<div class="meta">${esc(v.notes)}</div>` : ""}
-    <div class="row" style="justify-content:flex-start"><select aria-label="Viewing status" id="vs-${esc(v.id)}" data-vf="status" style="max-width:170px">${opts}</select>${v.calendar_event_id ? `<span class="meta">In calendar</span>` : ""}</div>
+    <div class="row" style="justify-content:flex-start"><select aria-label="Viewing status" id="vs-${esc(v.id)}" data-vf="status" style="max-width:170px">${opts}</select></div>
   </div></div></article>`;
 }
 
@@ -174,6 +175,19 @@ function render() {
   if (!editing || editing.id !== "past-list") $("past-list").innerHTML = past.map(viewCard).join("") || `<div class="empty">None yet.</div>`;
   $("past-sum").textContent = `Past and cancelled (${past.length})`;
 }
+
+// ---------- calendar feed link ----------
+async function loadFeedLink() {
+  const { data, error } = await sb.from("app_settings").select("value").eq("key", "ical_token").maybeSingle();
+  if (error || !data) { $("feed-url").value = "Couldn't load the calendar link."; return; }
+  const url = `${SUPABASE_URL}/functions/v1/viewings-ics?token=${data.value}`;
+  $("feed-url").value = url;
+  $("feed-open").href = url.replace(/^https:/, "webcal:");
+}
+$("feed-copy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("feed-url").value); toast("Calendar link copied"); }
+  catch { $("feed-url").select(); toast("Link selected. Copy it from the box."); }
+};
 
 // ---------- after a call: ask how it went ----------
 const PENDING = "hh-pending-call";

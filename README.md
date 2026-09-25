@@ -4,7 +4,8 @@ A small web app for tracking houses from our Rightmove search, who to call, and 
 
 - **Database and sign-in:** Supabase (Postgres, one shared password login, row level security, live updates)
 - **Front end:** static HTML, CSS and JS in `public/` with no build step, hosted on Vercel
-- **Automation:** a scheduled Claude task runs at 7:45, 12:45 and 18:45 UK time. It reads Rightmove alerts and agents' viewing emails from Gmail, writes to the database through the Supabase connector, and adds viewings to Google Calendar.
+- **Automation:** a scheduled Claude task runs at 7:45, 12:45 and 18:45 UK time. It reads Rightmove alerts and agents' viewing emails from Gmail, writes to the database through the Supabase connector, and flags phone-booked viewings that still need a confirmation email.
+- **Calendar:** a Supabase Edge Function (`viewings-ics`) publishes an iCal feed of all viewings. Subscribe to it in FamilyWall or any calendar app.
 
 ## Layout
 
@@ -40,6 +41,21 @@ Supabase project `house-hunt` (ref `fkpcolgfgkhmyfuauirf`, London region) alread
 3. **Deploy.** Push this repo to GitHub, then in Vercel choose New Project → import the repo. Set Framework Preset to "Other", leave the build command empty, and set the output directory to `public`.
 
 The app asks only for the password. It signs in as `house-hunt@example.com` behind the scenes, and the session is remembered on each device until someone clicks **Lock**.
+
+## Calendar feed
+
+The Viewings tab has a **Calendar feed** section with the link, a copy button and a webcal:// link. The feed:
+- includes every viewing except cancelled ones, lasting one hour each, with the address as the location
+- titles viewings as `Viewing: <street>`, or `Viewing (no confirmation email): <street>` for a phone-booked viewing whose confirmation email hasn't arrived yet (these are marked TENTATIVE)
+- puts the confirmation-email status, agent and phone number, price and beds, notes and the listing link in the description
+
+The link contains a secret token (`app_settings.ical_token`) because calendar apps can't sign in. To revoke the link and make a new one:
+
+```sql
+update public.app_settings set value = replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '') where key = 'ical_token';
+```
+
+Source is in `supabase/functions/viewings-ics/index.ts`. It's deployed with JWT verification off (the token check replaces it).
 
 ## Using it on a phone
 

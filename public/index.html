@@ -99,6 +99,13 @@
         <label>&nbsp;<button class="btn primary" type="submit">Add viewing</button></label>
       </form>
     </details>
+    <details style="margin-top:12px" id="feed-wrap"><summary>Calendar feed (FamilyWall, Google, Apple…)</summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        <p class="sub" style="margin:0">Subscribe to this link in your calendar app to see every viewing, with the address and whether the agent's confirmation email has arrived. It updates on its own; most apps re-check every few hours. Anyone with the link can see the viewings, so only share it with family.</p>
+        <input id="feed-url" readonly aria-label="Calendar feed link" value="Loading…">
+        <div class="row" style="justify-content:flex-start"><button class="btn primary" id="feed-copy" type="button">Copy link</button><a class="btn" id="feed-open" href="#">Open in calendar app</a></div>
+      </div>
+    </details>
     <details style="margin-top:12px"><summary id="past-sum">Past and cancelled</summary><div class="list" id="past-list" style="margin-top:10px"></div></details>
   </section>
 
